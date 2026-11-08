@@ -1,0 +1,16 @@
+# Original artifact and copyrighted extractions (not redistributable, >100MB)
+cake-sort.xapk
+extracted/
+
+# Local toolchain
+tools/
+
+# Build outputs
+*.jar
+**/build/
+.gradle/
+.cxx/
+*.iml
+.idea/
+DerivedData/
+.DS_Store

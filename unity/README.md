@@ -110,6 +110,9 @@ Editor menu **Cake Sort**:
 - *Reimport Art*: reapplies the texture import settings in `Resources/Art`.
 - *Build iOS Xcode Project*: writes an Xcode project to `Builds/iOS`. Set
   your signing team in Xcode, then run on a device.
+- *Build iOS Simulator Xcode Project*: writes a Simulator-SDK project to
+  `Builds/iOSSimulator`; build it with `xcodebuild` for an iOS Simulator and
+  install the resulting `.app` with `simctl`.
 
 ## Command-line checks
 

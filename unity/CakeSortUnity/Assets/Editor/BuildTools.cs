@@ -36,6 +36,16 @@ namespace CakeSort.EditorTools
             Build(BuildTarget.iOS, "Builds/iOS");
         }
 
+        /// <summary>Xcode project targeting the Simulator SDK, for running on an iOS simulator.</summary>
+        [MenuItem("Cake Sort/Build iOS Simulator Xcode Project")]
+        public static void BuildIOSSimulator()
+        {
+            ReimportArt();
+            ProjectSetup.Apply();
+            PlayerSettings.iOS.sdkVersion = iOSSdkVersion.SimulatorSDK;
+            Build(BuildTarget.iOS, "Builds/iOSSimulator");
+        }
+
         static void Build(BuildTarget target, string path)
         {
             Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path)) ?? ".");

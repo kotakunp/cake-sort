@@ -31,7 +31,7 @@ class Plate {
 
 sealed class GameEvent {
     data class Placed(val plate: Int) : GameEvent()
-    data class Merged(val from: Int, val to: Int, val flavor: Int, val count: Int) : GameEvent()
+    data class Merged(val from: Int, val to: Int, val flavor: Int, val count: Int, val giveBack: List<Int>) : GameEvent()
     data class Served(val plate: Int, val flavor: Int, val points: Int, val combo: Int) : GameEvent()
     data class SlotRefilled(val slot: Int, val cake: Cake) : GameEvent()
     object Won : GameEvent()
@@ -99,6 +99,8 @@ class Engine(level: Int, seed: Long = 0L) {
 
     /** Consolidate identical adjacent slices; serve completed cakes; cascade until stable. */
     private fun resolve(events: MutableList<GameEvent>) {
+        // loop guard: slice exchanges can shuttle slices between two plates; stop on a repeated board state
+        val seenStates = mutableSetOf<String>()
         while (true) {
             // 1. serve completed cakes (combo chain counts within one placement)
             var servedAny = false
@@ -114,7 +116,9 @@ class Engine(level: Int, seed: Long = 0L) {
                     servedAny = true
                 }
             }
-            if (servedAny) continue
+            if (servedAny) { seenStates.clear(); continue }
+            val stateKey = plates.joinToString("|") { p -> p.slices.joinToString(",") }
+            if (!seenStates.add(stateKey)) break
             // 2. single best merge, then loop
             val merge = findBestMerge() ?: break
             val from = merge.from; val to = merge.to
@@ -123,13 +127,18 @@ class Engine(level: Int, seed: Long = 0L) {
                 plates[from].slices.remove(flavor)
                 plates[to].slices.add(flavor)
             }
-            events += GameEvent.Merged(from, to, flavor, count)
+            for (g in merge.giveBack) {
+                plates[to].slices.remove(g)
+                plates[from].slices.add(g)
+            }
+            events += GameEvent.Merged(from, to, flavor, count, merge.giveBack)
         }
     }
 
     /**
      * A merge drains flavor f fully from one adjacent plate into another (or completes a cake).
-     * Loop-safe: every merge either empties a flavor from a plate or completes a cake (served next pass).
+     * The destination takes k f-slices; if it was full, it hands k non-f slices back in exchange,
+     * so merges work even between two full plates. Loop-safe via the seenStates guard in resolve().
      */
     private fun findBestMerge(): MergeChoice? {
         var best: MergeChoice? = null
@@ -145,13 +154,18 @@ class Engine(level: Int, seed: Long = 0L) {
                     val dst = if (swap) a else b
                     val srcIdx = if (swap) j else i
                     val dstIdx = if (swap) i else j
+                    // capacity: free room plus, when full, the non-f slices it can trade back
                     val room = Rules.SLICES_PER_CAKE - dst.slices.size
-                    val movable = minOf(src.countOf(f), room)
+                    val tradable = dst.slices.size - dst.countOf(f)
+                    val movable = minOf(src.countOf(f), room + tradable)
                     if (movable <= 0) continue
                     val completes = dst.countOf(f) + movable == Rules.SLICES_PER_CAKE
                     val drains = movable == src.countOf(f)
                     if (!completes && !drains) continue
-                    val choice = MergeChoice(srcIdx, dstIdx, f, movable, completes)
+                    // slices that overflow past free room are swapped back, first non-f slices first
+                    val giveBackCount = movable - minOf(movable, room)
+                    val giveBack = dst.slices.filter { it != f }.take(giveBackCount)
+                    val choice = MergeChoice(srcIdx, dstIdx, f, movable, giveBack, completes)
                     if (best == null || choice.priority > best!!.priority) best = choice
                 }
             }
@@ -159,7 +173,10 @@ class Engine(level: Int, seed: Long = 0L) {
         return best
     }
 
-    private class MergeChoice(val from: Int, val to: Int, val flavor: Int, val count: Int, val completes: Boolean) {
+    private class MergeChoice(
+        val from: Int, val to: Int, val flavor: Int, val count: Int,
+        val giveBack: List<Int>, val completes: Boolean
+    ) {
         // completing merges first, then bigger moves; stable tie-break by indices
         val priority = (if (completes) 1000 else 0) + count * 10 - from
     }

@@ -57,7 +57,7 @@ private struct GameOverlay<Content: View>: View {
             .frame(maxWidth: 340)
             .background(
                 RoundedRectangle(cornerRadius: 26)
-                    .fill(FlavorPalette.background)
+                    .fill(FlavorPalette.backgroundTop)
                     .shadow(color: .black.opacity(0.22), radius: 18, x: 0, y: 8)
             )
             .padding(24)
@@ -73,7 +73,12 @@ private struct BakeryButtonStyle: ButtonStyle {
             .foregroundColor(.white)
             .padding(.horizontal, 28)
             .padding(.vertical, 12)
-            .background(Capsule().fill(FlavorPalette.accent))
+            .background(
+                Capsule()
+                    .fill(LinearGradient(colors: [FlavorPalette.accentLight, FlavorPalette.accent],
+                                         startPoint: .top, endPoint: .bottom))
+                    .shadow(color: FlavorPalette.accent.opacity(0.5), radius: 6, x: 0, y: 3)
+            )
             .scaleEffect(configuration.isPressed ? 0.95 : 1)
     }
 }

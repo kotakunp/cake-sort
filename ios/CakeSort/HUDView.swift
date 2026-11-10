@@ -29,10 +29,20 @@ struct HUDView: View {
                 }
                 .accessibilityLabel(Text(viewModel.soundEnabled ? "Mute sounds" : "Enable sounds"))
             }
-            ProgressView(value: Double(min(viewModel.score, viewModel.targetScore)),
-                         total: Double(viewModel.targetScore))
-                .progressViewStyle(LinearProgressViewStyle(tint: FlavorPalette.accent))
-                .scaleEffect(x: 1, y: 1.5, anchor: .center)
+            GeometryReader { proxy in
+                let progress = min(1, Double(viewModel.score) / Double(max(1, viewModel.targetScore)))
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color.white.opacity(0.65))
+                        .shadow(color: Color(hex: 0x6D4C41).opacity(0.18), radius: 2, x: 0, y: 1)
+                    Capsule()
+                        .fill(LinearGradient(colors: [FlavorPalette.accentLight, FlavorPalette.accent],
+                                             startPoint: .leading, endPoint: .trailing))
+                        .frame(width: progress > 0 ? max(10, proxy.size.width * progress) : 0)
+                        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: viewModel.score)
+                }
+            }
+            .frame(height: 10)
         }
         .foregroundColor(FlavorPalette.ink)
         .padding(.horizontal, 16)
@@ -86,7 +96,12 @@ private struct BoosterButton: View {
             .frame(maxWidth: .infinity)
             .background(
                 RoundedRectangle(cornerRadius: 13)
-                    .fill(isSelected ? Color(hex: 0xFFE0B2) : Color.white.opacity(0.62))
+                    .fill(LinearGradient(
+                        colors: isSelected
+                            ? [Color(hex: 0xFFE0B2), Color(hex: 0xFFCC80)]
+                            : [Color.white, Color(hex: 0xFFF1DC)],
+                        startPoint: .top, endPoint: .bottom))
+                    .shadow(color: Color(hex: 0x6D4C41).opacity(0.22), radius: 4, x: 0, y: 2)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 13)

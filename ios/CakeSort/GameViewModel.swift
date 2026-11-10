@@ -1,4 +1,4 @@
-import AudioServices
+import AudioToolbox
 import SwiftUI
 
 struct MergeFlight: Identifiable, Equatable {
@@ -200,7 +200,7 @@ final class GameViewModel: ObservableObject {
                 playSound(1104)
                 await pause(milliseconds: 140)
 
-            case .merged(let from, let to, let flavor, let count):
+            case .merged(let from, let to, let flavor, let count, let giveBack):
                 mergeFlight = MergeFlight(from: from, to: to, flavor: flavor, count: count)
                 await pause(milliseconds: 200)
                 withAnimation(.easeInOut(duration: 0.08)) {
@@ -209,6 +209,12 @@ final class GameViewModel: ObservableObject {
                             plates[from].slices.remove(at: index)
                         }
                         plates[to].slices.append(flavor)
+                    }
+                    for returned in giveBack {
+                        if let index = plates[to].slices.firstIndex(of: returned) {
+                            plates[to].slices.remove(at: index)
+                        }
+                        plates[from].slices.append(returned)
                     }
                     mergeFlight = nil
                 }

@@ -11,13 +11,50 @@ struct CakeSortApp: App {
     }
 }
 
+/// Scattered sugar sprinkles behind the whole screen, deterministic per launch.
+struct SprinkleFieldView: View {
+    private struct Sprinkle: Identifiable {
+        let id: Int
+        let position: CGPoint
+        let angle: Double
+        let color: Color
+    }
+
+    private let sprinkles: [Sprinkle] = {
+        var rng = SplitMix64(seed: 0xCAFE)
+        return (0..<42).map { index in
+            Sprinkle(id: index,
+                     position: CGPoint(x: rng.nextDouble(), y: rng.nextDouble()),
+                     angle: rng.nextDouble() * 360,
+                     color: FlavorPalette.color(for: index).opacity(0.16))
+        }
+    }()
+
+    var body: some View {
+        GeometryReader { geometry in
+            ForEach(sprinkles) { sprinkle in
+                Capsule()
+                    .fill(sprinkle.color)
+                    .frame(width: 12, height: 4)
+                    .rotationEffect(.degrees(sprinkle.angle))
+                    .position(x: sprinkle.position.x * geometry.size.width,
+                              y: sprinkle.position.y * geometry.size.height)
+            }
+        }
+    }
+}
+
 struct GameRootView: View {
     @ObservedObject var viewModel: GameViewModel
 
     var body: some View {
         ZStack {
-            FlavorPalette.background
+            LinearGradient(colors: [FlavorPalette.backgroundTop, FlavorPalette.backgroundBottom],
+                           startPoint: .top, endPoint: .bottom)
                 .ignoresSafeArea()
+            SprinkleFieldView()
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
 
             VStack(spacing: 10) {
                 HUDView(viewModel: viewModel)

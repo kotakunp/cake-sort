@@ -52,7 +52,7 @@ struct Plate: Equatable {
 
 enum GameEvent: Equatable {
     case placed(plate: Int)
-    case merged(from: Int, to: Int, flavor: Int, count: Int)
+    case merged(from: Int, to: Int, flavor: Int, count: Int, giveBack: [Int])
     case served(plate: Int, flavor: Int, points: Int, combo: Int)
     case slotRefilled(slot: Int, cake: Cake)
     case won
@@ -173,6 +173,8 @@ final class Engine {
     }
 
     private func resolve(events: inout [GameEvent]) {
+        // Loop guard: slice exchanges can shuttle slices between two plates; stop on a repeated board state.
+        var seenStates = Set<String>()
         while true {
             // Serve every complete plate before considering another merge.
             var servedAny = false
@@ -186,7 +188,14 @@ final class Engine {
                 events.append(.served(plate: index, flavor: flavor, points: points, combo: comboChain))
                 servedAny = true
             }
-            if servedAny { continue }
+            if servedAny {
+                seenStates.removeAll()
+                continue
+            }
+
+            let stateKey = plates.map { plate in plate.slices.map(String.init).joined(separator: ",") }
+                .joined(separator: "|")
+            if !seenStates.insert(stateKey).inserted { break }
 
             guard let merge = findBestMerge() else { break }
             for _ in 0..<merge.count {
@@ -195,8 +204,14 @@ final class Engine {
                 }
                 plates[merge.to].slices.append(merge.flavor)
             }
+            for returned in merge.giveBack {
+                if let sliceIndex = plates[merge.to].slices.firstIndex(of: returned) {
+                    plates[merge.to].slices.remove(at: sliceIndex)
+                }
+                plates[merge.from].slices.append(returned)
+            }
             events.append(.merged(from: merge.from, to: merge.to,
-                                  flavor: merge.flavor, count: merge.count))
+                                  flavor: merge.flavor, count: merge.count, giveBack: merge.giveBack))
         }
     }
 
@@ -222,15 +237,21 @@ final class Engine {
                     let destination = swap ? first : second
                     let sourceIndex = swap ? secondIndex : firstIndex
                     let destinationIndex = swap ? firstIndex : secondIndex
+                    // Capacity: free room plus, when full, the non-matching slices it can trade back.
                     let room = Rules.slicesPerCake - destination.slices.count
-                    let movable = min(source.countOf(flavor), room)
+                    let tradable = destination.slices.count - destination.countOf(flavor)
+                    let movable = min(source.countOf(flavor), room + tradable)
                     if movable <= 0 { continue }
                     let completes = destination.countOf(flavor) + movable == Rules.slicesPerCake
                     let drains = movable == source.countOf(flavor)
                     if !completes && !drains { continue }
 
+                    // Slices that overflow past free room are swapped back, first non-matching first.
+                    let giveBackCount = movable - min(movable, room)
+                    let giveBack = Array(destination.slices.filter { $0 != flavor }.prefix(giveBackCount))
                     let choice = MergeChoice(from: sourceIndex, to: destinationIndex,
-                                             flavor: flavor, count: movable, completes: completes)
+                                             flavor: flavor, count: movable, giveBack: giveBack,
+                                             completes: completes)
                     if best == nil || choice.priority > best!.priority {
                         best = choice
                     }
@@ -245,6 +266,7 @@ final class Engine {
         let to: Int
         let flavor: Int
         let count: Int
+        let giveBack: [Int]
         let completes: Bool
 
         var priority: Int {

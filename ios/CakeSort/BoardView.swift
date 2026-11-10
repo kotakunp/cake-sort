@@ -19,9 +19,21 @@ struct BoardView: View {
                                  y: (geometry.size.height - side) / 2)
 
             ZStack {
-                RoundedRectangle(cornerRadius: 18)
-                    .fill(Color(hex: 0xF3DFC0).opacity(0.65))
-                    .frame(width: side, height: side)
+                RoundedRectangle(cornerRadius: 22)
+                    .fill(LinearGradient(colors: [FlavorPalette.trayTop, FlavorPalette.trayBottom],
+                                         startPoint: .top, endPoint: .bottom))
+                    .frame(width: side + 10, height: side + 10)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 22)
+                            .stroke(FlavorPalette.trayEdge.opacity(0.8), lineWidth: 2)
+                            .frame(width: side + 10, height: side + 10)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20)
+                            .stroke(Color.white.opacity(0.35), lineWidth: 1)
+                            .frame(width: side + 4, height: side + 4)
+                    )
+                    .shadow(color: Color(hex: 0x6D4C41).opacity(0.35), radius: 10, x: 0, y: 6)
                     .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
 
                 ForEach(0..<(Rules.boardCols * Rules.boardRows), id: \.self) { index in
@@ -56,13 +68,12 @@ struct BoardView: View {
     private func plateView(index: Int, cell: CGFloat) -> some View {
         let isServing = viewModel.serveAnimation?.plate == index
         return ZStack {
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.white.opacity(0.44))
             CakeView(slices: viewModel.plates[index].slices)
-                .padding(5)
-            RoundedRectangle(cornerRadius: 12)
+                .padding(2)
+            Circle()
                 .stroke(viewModel.highlightedPlate == index ? FlavorPalette.accent : Color.clear,
                         lineWidth: 3)
+                .padding(1)
         }
         .frame(width: cell - 4, height: cell - 4)
         .scaleEffect(isServing ? 1.16 : 1)

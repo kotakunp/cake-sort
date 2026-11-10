@@ -112,6 +112,28 @@ fun main() {
         check("plate never exceeds 6 slices", e.plates.all { it.slices.size <= Rules.SLICES_PER_CAKE })
         println("     post-state: p0=${e.plates[0].slices} p1=${e.plates[1].slices} score=${e.score}")
     }
+    // 10. full plates still sort: slices exchange so like flavors consolidate and complete
+    run {
+        // plate0 full: 3 red + 3 blue; incoming cake: 3 red + 3 green onto plate 1 (adjacent)
+        val e = engineWith(0 to listOf(1, 1, 1, 2, 2, 2), slots = arrayOf(cake(1, 3, 3, 3), cake(4, 3, 5, 3), cake(6, 6)))
+        val ev = e.place(0, 1)
+        val served = ev.filterIsInstance<GameEvent.Served>()
+        val merged = ev.filterIsInstance<GameEvent.Merged>()
+        check("full plates merge (3 reds move, 3 blues traded back)", merged.any { it.from == 0 && it.to == 1 && it.flavor == 1 && it.count == 3 && it.giveBack == listOf(3, 3, 3) })
+        check("full-cake exchange completes and serves plate 1", served.any { it.plate == 1 && it.flavor == 1 })
+        check("displaced slices land on plate 0", e.plates[0].slices.sorted() == listOf(2, 2, 2, 3, 3, 3))
+        check("plate sizes stay <= 6 after exchange", e.plates.all { it.slices.size <= Rules.SLICES_PER_CAKE })
+    }
+    // 11. full plates partially consolidate without completing
+    run {
+        // plate0 full: 3 red + 3 blue; incoming: 2 red + 4 green -> 2 reds move over, 2 blues come back
+        val e = engineWith(0 to listOf(1, 1, 1, 2, 2, 2), slots = arrayOf(cake(1, 2, 3, 4), cake(4, 3, 5, 3), cake(6, 6)))
+        val ev = e.place(0, 1)
+        val merged = ev.filterIsInstance<GameEvent.Merged>()
+        check("partial exchange drains flavor from placed cake", merged.any { it.from == 1 && it.to == 0 && it.flavor == 1 && it.count == 2 && it.giveBack == listOf(2, 2) })
+        check("plate 0 consolidates to 5 red", e.plates[0].slices.count { it == 1 } == 5)
+        check("resolution terminates despite exchange ping-pong", e.plates.all { it.slices.size <= Rules.SLICES_PER_CAKE })
+    }
     println(if (failures == 0) "\nALL TESTS PASSED" else "\n$failures TEST(S) FAILED")
     if (failures > 0) kotlin.system.exitProcess(1)
 }

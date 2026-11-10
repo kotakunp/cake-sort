@@ -33,6 +33,7 @@ namespace CakeSort.EditorTools
         {
             ReimportArt();
             ProjectSetup.Apply();
+            PlayerSettings.iOS.sdkVersion = iOSSdkVersion.DeviceSDK;
             Build(BuildTarget.iOS, "Builds/iOS");
         }
 
